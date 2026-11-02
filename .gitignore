@@ -1,0 +1,27 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/app/build/
+/captures
+.externalNativeBuild
+.cxx
+*.apk
+*.aab
+keystore.properties
+*.jks
+
+# SmartEyeX platform
+.env
+/backend/data/
+/deploy/.env
+__pycache__/
+*.pyc
+.venv/
+/firmware/.pio/
+/firmware/test/host/test_proto
+*.db
+*.db-wal
+*.db-shm

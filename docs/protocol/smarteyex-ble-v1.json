@@ -1,0 +1,185 @@
+{
+  "name": "SmartEyeX BLE protocol",
+  "version": 1,
+  "service": "caee0001-0087-43a0-82ed-500a709a9129",
+  "characteristics": {
+    "DEVICE_INFO": {
+      "uuid": "caee0002-0087-43a0-82ed-500a709a9129",
+      "props": [
+        "read"
+      ],
+      "doc": "JSON UTF-8: proto, fw, hw, id, caps"
+    },
+    "STATUS": {
+      "uuid": "caee0003-0087-43a0-82ed-500a709a9129",
+      "props": [
+        "read",
+        "notify"
+      ],
+      "doc": "10-byte status block"
+    },
+    "AUTH": {
+      "uuid": "caee0004-0087-43a0-82ed-500a709a9129",
+      "props": [
+        "write",
+        "notify"
+      ],
+      "doc": "Mutual HMAC authentication and provisioning"
+    },
+    "CONTROL": {
+      "uuid": "caee0005-0087-43a0-82ed-500a709a9129",
+      "props": [
+        "write"
+      ],
+      "doc": "Commands phone -> glasses [cmd][seq][len][payload]"
+    },
+    "EVENT": {
+      "uuid": "caee0006-0087-43a0-82ed-500a709a9129",
+      "props": [
+        "notify"
+      ],
+      "doc": "Events glasses -> phone [evt][seq][len][payload]"
+    },
+    "IMAGE": {
+      "uuid": "caee0007-0087-43a0-82ed-500a709a9129",
+      "props": [
+        "notify"
+      ],
+      "doc": "JPEG chunks [xfer u8][offset u32][data]"
+    },
+    "AUDIO_IN": {
+      "uuid": "caee0008-0087-43a0-82ed-500a709a9129",
+      "props": [
+        "notify"
+      ],
+      "doc": "Microphone ADPCM frames glasses -> phone"
+    },
+    "AUDIO_OUT": {
+      "uuid": "caee0009-0087-43a0-82ed-500a709a9129",
+      "props": [
+        "write_no_response"
+      ],
+      "doc": "Speaker ADPCM frames phone -> glasses"
+    }
+  },
+  "commands": {
+    "CAPTURE": 1,
+    "MIC_START": 2,
+    "MIC_STOP": 3,
+    "SPEAK_BEGIN": 4,
+    "SPEAK_END": 5,
+    "SPEAK_ABORT": 6,
+    "SET_VOLUME": 7,
+    "PING": 8,
+    "TONE": 9
+  },
+  "events": {
+    "BUTTON": 1,
+    "CAPTURE_READY": 2,
+    "CAPTURE_FAILED": 3,
+    "MIC_STARTED": 4,
+    "MIC_ENDED": 5,
+    "CMD_ACK": 6,
+    "LOW_BATTERY": 7,
+    "SPEAK_UNDERRUN": 8,
+    "PRIVACY": 9,
+    "ERROR": 10
+  },
+  "status": {
+    "OK": 0,
+    "BAD_COMMAND": 1,
+    "BAD_PARAMS": 2,
+    "BUSY": 3,
+    "NOT_AUTHENTICATED": 4,
+    "UNSUPPORTED": 5,
+    "PRIVACY_BLOCKED": 6,
+    "HW_FAILURE": 7,
+    "LOW_BATTERY": 8,
+    "MTU_TOO_SMALL": 9
+  },
+  "auth": {
+    "HELLO": 1,
+    "PROOF": 2,
+    "PROVISION": 16,
+    "FORGET": 17,
+    "CHALLENGE": 129,
+    "AUTH_OK": 130,
+    "AUTH_FAIL": 131,
+    "PROVISION_OK": 144,
+    "FORGET_OK": 145,
+    "PROVISION_FAIL": 147
+  },
+  "auth_fail": {
+    "NO_SECRET": 1,
+    "BAD_MAC": 2,
+    "LOCKED_OUT": 3,
+    "BAD_STATE": 4,
+    "MTU_TOO_SMALL": 5
+  },
+  "provision_fail": {
+    "NOT_PAIRING": 1,
+    "STORAGE": 3
+  },
+  "button": {
+    "SHORT": 1,
+    "LONG": 2,
+    "DOUBLE": 3,
+    "HOLD_START": 4,
+    "HOLD_END": 5
+  },
+  "mic_end": {
+    "STOPPED": 1,
+    "TIMEOUT": 2,
+    "BUTTON_RELEASED": 3,
+    "ERROR": 4
+  },
+  "capture_fail": {
+    "PRIVACY": 1,
+    "BUSY": 2,
+    "CAMERA_INIT": 3,
+    "NO_FRAME": 4,
+    "TRANSFER": 5
+  },
+  "flags": {
+    "CAMERA_ACTIVE": 1,
+    "MIC_ACTIVE": 2,
+    "SPEAKER_ACTIVE": 4,
+    "AUTHENTICATED": 8,
+    "PAIRING_MODE": 16,
+    "LOW_BATTERY": 32,
+    "PRIVACY_CLOSED": 64,
+    "PROVISIONED": 128
+  },
+  "charge": {
+    "DISCHARGING": 0,
+    "CHARGING": 1,
+    "FULL": 2,
+    "UNKNOWN": 255
+  },
+  "resolutions": {
+    "QVGA": 0,
+    "VGA": 1,
+    "SVGA": 2,
+    "XGA": 3
+  },
+  "consts": {
+    "SECRET_LEN": 32,
+    "NONCE_LEN": 16,
+    "MAC_LEN": 32,
+    "MIN_MTU": 185,
+    "MAX_MTU": 247,
+    "AUDIO_RATE_HZ": 16000,
+    "AUDIO_FRAME_SAMPLES": 320,
+    "AUDIO_HEADER_LEN": 6,
+    "IMAGE_HEADER_LEN": 5,
+    "STATUS_LEN": 10,
+    "PROTO_VERSION": 1,
+    "PAIRING_WINDOW_MS": 60000,
+    "AUTH_MAX_FAILS": 5,
+    "AUTH_LOCKOUT_MS": 60000
+  },
+  "mac_labels": {
+    "GLASSES": "SEX1-G",
+    "PHONE": "SEX1-C"
+  }
+}

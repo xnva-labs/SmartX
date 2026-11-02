@@ -1,0 +1,38 @@
+# Jalankan dari folder deploy/ setelah membuat .env:  ./init-env.sh --domain api.contoh-anda.com
+services:
+  api:
+    build: ../backend
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - xnva-data:/data
+    expose:
+      - "8080"
+
+  maintenance:
+    build: ../backend
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - xnva-data:/data
+    command: ["sh", "-c", "while true; do python -m xnva maintenance; sleep 86400; done"]
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      - XNVA_DOMAIN=${XNVA_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  xnva-data:
+  caddy-data:
+  caddy-config:

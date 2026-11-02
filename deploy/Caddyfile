@@ -1,0 +1,7 @@
+{$XNVA_DOMAIN} {
+	encode zstd gzip
+	request_body {
+		max_size 12MB
+	}
+	reverse_proxy api:8080
+}

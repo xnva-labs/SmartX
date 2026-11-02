@@ -1,0 +1,4033 @@
+# Dihasilkan oleh backend/tools/gen_openapi.py — jangan diedit manual.
+openapi: 3.0.3
+info:
+  title: SmartEyeX Platform API
+  version: 0.2.0
+  description: 'API platform SmartEyeX (XNVA Labs): dua lingkungan terpisah (Personal dan Enterprise) di atas satu fondasi
+    XNAI.
+
+    Semua waktu dalam epoch milidetik. Semua error berbentuk {"error": {"code", "message", "request_id"}}.
+
+    Token Personal tidak berlaku di endpoint Enterprise dan sebaliknya (HTTP 403 wrong_realm).'
+servers:
+- url: /
+  description: Origin tempat backend di-deploy (HTTPS wajib di production)
+tags:
+- name: ops
+- name: auth
+- name: platform
+- name: personal
+- name: devices
+- name: notifications
+- name: xnai
+- name: enterprise
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    platformToken:
+      type: apiKey
+      in: header
+      name: X-Platform-Token
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          required:
+          - code
+          - message
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            request_id:
+              type: string
+  responses:
+    E400:
+      description: validation_error / invalid_json
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    E401:
+      description: unauthorized / token_expired / invalid_credentials
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    E403:
+      description: forbidden / wrong_realm / disabled_by_policy
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    E404:
+      description: not_found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    E409:
+      description: conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    E429:
+      description: rate_limited / quota_exceeded / account_locked
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    E503:
+      description: xnai_not_configured / upstream tidak tersedia
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+paths:
+  /healthz:
+    get:
+      summary: Liveness probe
+      tags:
+      - ops
+      security: []
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /readyz:
+    get:
+      summary: Readiness probe (memeriksa integritas kedua database)
+      tags:
+      - ops
+      security: []
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/status:
+    get:
+      summary: Status fitur layanan; jujur melaporkan configured/not_configured untuk XNAI
+      tags:
+      - status
+      security: []
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/auth/personal/register:
+    post:
+      summary: Daftar akun Personal
+      tags:
+      - auth
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  maxLength: 256
+                display_name:
+                  type: string
+                  maxLength: 80
+                device_label:
+                  type: string
+                  maxLength: 80
+              required:
+              - email
+              - password
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/auth/personal/login:
+    post:
+      summary: Masuk akun Personal
+      tags:
+      - auth
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  maxLength: 256
+                device_label:
+                  type: string
+                  maxLength: 80
+              required:
+              - email
+              - password
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/auth/enterprise/login:
+    post:
+      summary: Masuk akun karyawan organisasi
+      tags:
+      - auth
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                org:
+                  type: string
+                  maxLength: 40
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  maxLength: 256
+                device_label:
+                  type: string
+                  maxLength: 80
+              required:
+              - org
+              - email
+              - password
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/auth/enterprise/invites/accept:
+    post:
+      summary: Terima undangan karyawan dan set password
+      tags:
+      - auth
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                  maxLength: 200
+                password:
+                  type: string
+                  maxLength: 256
+                display_name:
+                  type: string
+                  maxLength: 80
+                device_label:
+                  type: string
+                  maxLength: 80
+              required:
+              - token
+              - password
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/auth/enterprise/signup:
+    post:
+      summary: 'Buat organisasi mandiri (nonaktif secara default: XNVA_ALLOW_ORG_SIGNUP)'
+      tags:
+      - auth
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                org_name:
+                  type: string
+                  maxLength: 120
+                org_slug:
+                  type: string
+                  maxLength: 40
+                owner_email:
+                  type: string
+                  format: email
+                owner_name:
+                  type: string
+                  maxLength: 80
+                owner_password:
+                  type: string
+                  maxLength: 256
+              required:
+              - org_name
+              - org_slug
+              - owner_email
+              - owner_name
+              - owner_password
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/auth/refresh:
+    post:
+      summary: Tukar refresh token (rotasi; pemakaian ulang mencabut sesi)
+      tags:
+      - auth
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token:
+                  type: string
+                  maxLength: 300
+              required:
+              - refresh_token
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/auth/logout:
+    post:
+      summary: Cabut sesi saat ini
+      tags:
+      - auth
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      responses:
+        '204':
+          description: Berhasil tanpa isi
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/auth/me:
+    get:
+      summary: Identitas, realm, peran, dan izin saat ini
+      tags:
+      - auth
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/auth/sessions:
+    get:
+      summary: Daftar sesi aktif milik sendiri
+      tags:
+      - auth
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/auth/sessions/{sid}:
+    delete:
+      summary: Cabut sesi milik sendiri
+      tags:
+      - auth
+      parameters:
+      - name: sid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      responses:
+        '204':
+          description: Berhasil tanpa isi
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/auth/password:
+    post:
+      summary: Ganti password (mencabut sesi lain)
+      tags:
+      - auth
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                current_password:
+                  type: string
+                  maxLength: 256
+                new_password:
+                  type: string
+                  maxLength: 256
+              required:
+              - current_password
+              - new_password
+      responses:
+        '204':
+          description: Berhasil tanpa isi
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/platform/orgs:
+    post:
+      summary: Provisioning organisasi (header X-Platform-Token)
+      tags:
+      - platform
+      security:
+      - platformToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 120
+                slug:
+                  type: string
+                  maxLength: 40
+                owner_email:
+                  type: string
+                  format: email
+                owner_name:
+                  type: string
+                  maxLength: 80
+                ai_monthly_quota:
+                  type: integer
+              required:
+              - name
+              - slug
+              - owner_email
+              - owner_name
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/personal/profile:
+    get:
+      summary: Profil akun
+      tags:
+      - personal
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    put:
+      summary: Ubah nama tampilan
+      tags:
+      - personal
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                display_name:
+                  type: string
+                  maxLength: 80
+              required:
+              - display_name
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/personal/privacy:
+    get:
+      summary: Pengaturan privasi sisi server
+      tags:
+      - personal
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    put:
+      summary: Ubah consent cloud processing, sinkronisasi memori, retensi
+      tags:
+      - personal
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cloud_processing:
+                  type: boolean
+                memory_sync:
+                  type: boolean
+                retention_days:
+                  type: integer
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/personal/activity:
+    get:
+      summary: Transparansi aktivitas AI (metadata saja)
+      tags:
+      - personal
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/personal/export:
+    get:
+      summary: Ekspor seluruh data akun (JSON)
+      tags:
+      - personal
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/personal/account:
+    delete:
+      summary: Hapus akun dan seluruh data (crypto-shredding)
+      tags:
+      - personal
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  maxLength: 256
+              required:
+              - password
+      responses:
+        '204':
+          description: Berhasil tanpa isi
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/personal/memory:
+    get:
+      summary: Daftar memori (perlu memory_sync)
+      tags:
+      - personal
+      parameters:
+      - name: type
+        in: query
+        required: false
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    post:
+      summary: Buat/ganti memori
+      tags:
+      - personal
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  maxLength: 64
+                type:
+                  type: string
+                  enum:
+                  - PROFILE
+                  - NOTE
+                  - PERSON
+                  - TASK
+                  - PREFERENCE
+                title:
+                  type: string
+                  maxLength: 200
+                content:
+                  type: string
+                  maxLength: 8000
+              required:
+              - type
+              - title
+              - content
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    delete:
+      summary: Hapus memori massal (opsional per tipe)
+      tags:
+      - personal
+      parameters:
+      - name: type
+        in: query
+        required: false
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/personal/memory/{rid}:
+    put:
+      summary: Ubah memori
+      tags:
+      - personal
+      parameters:
+      - name: rid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                title:
+                  type: string
+                  maxLength: 200
+                content:
+                  type: string
+                  maxLength: 8000
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    delete:
+      summary: Hapus memori (tombstone untuk sinkronisasi)
+      tags:
+      - personal
+      parameters:
+      - name: rid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal.'
+      responses:
+        '204':
+          description: Berhasil tanpa isi
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/personal/memory/sync:
+    post:
+      summary: Sinkronisasi dua arah (last-write-wins)
+      tags:
+      - personal
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                since:
+                  type: integer
+                items:
+                  type: array
+                  items:
+                    type: object
+              required:
+              - items
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/personal/reminders:
+    get:
+      summary: Daftar reminder
+      tags:
+      - personal
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    post:
+      summary: Buat reminder
+      tags:
+      - personal
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  maxLength: 64
+                title:
+                  type: string
+                  maxLength: 200
+                notes:
+                  type: string
+                  maxLength: 4000
+                due_at:
+                  type: integer
+                repeat:
+                  type: string
+                  enum:
+                  - none
+                  - daily
+                  - weekly
+                  - monthly
+                done_at:
+                  type: integer
+              required:
+              - title
+              - due_at
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/personal/reminders/{rid}:
+    put:
+      summary: Ubah reminder
+      tags:
+      - personal
+      parameters:
+      - name: rid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  maxLength: 200
+                notes:
+                  type: string
+                  maxLength: 4000
+                due_at:
+                  type: integer
+                repeat:
+                  type: string
+                done_at:
+                  type: integer
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    delete:
+      summary: Hapus reminder
+      tags:
+      - personal
+      parameters:
+      - name: rid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal.'
+      responses:
+        '204':
+          description: Berhasil tanpa isi
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/personal/reminders/sync:
+    post:
+      summary: Sinkronisasi reminder
+      tags:
+      - personal
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                since:
+                  type: integer
+                items:
+                  type: array
+                  items:
+                    type: object
+              required:
+              - items
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/devices:
+    get:
+      summary: 'Daftar perangkat kacamata (admin Enterprise: seluruh organisasi)'
+      tags:
+      - devices
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    post:
+      summary: Daftarkan perangkat; secret 32 byte dikembalikan
+      tags:
+      - devices
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hw_id:
+                  type: string
+                  maxLength: 12
+                label:
+                  type: string
+                  maxLength: 80
+                fw_version:
+                  type: string
+                  maxLength: 32
+              required:
+              - hw_id
+              - label
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/devices/{did}:
+    put:
+      summary: Ganti nama perangkat
+      tags:
+      - devices
+      parameters:
+      - name: did
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label:
+                  type: string
+                  maxLength: 80
+              required:
+              - label
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    delete:
+      summary: Cabut perangkat (secret dihapus)
+      tags:
+      - devices
+      parameters:
+      - name: did
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      responses:
+        '204':
+          description: Berhasil tanpa isi
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/devices/{did}/secret:
+    get:
+      summary: Ambil secret perangkat (hanya pemilik; diaudit)
+      tags:
+      - devices
+      parameters:
+      - name: did
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/devices/{did}/rotate-secret:
+    post:
+      summary: Rotasi secret perangkat
+      tags:
+      - devices
+      parameters:
+      - name: did
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/devices/{did}/telemetry:
+    post:
+      summary: Laporan baterai/firmware dari ponsel
+      tags:
+      - devices
+      parameters:
+      - name: did
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                battery_pct:
+                  type: integer
+                fw_version:
+                  type: string
+                  maxLength: 32
+      responses:
+        '204':
+          description: Berhasil tanpa isi
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/notifications:
+    get:
+      summary: Kotak masuk notifikasi
+      tags:
+      - notifications
+      parameters:
+      - name: since
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/notifications/{nid}/read:
+    post:
+      summary: Tandai sudah dibaca
+      tags:
+      - notifications
+      parameters:
+      - name: nid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      responses:
+        '204':
+          description: Berhasil tanpa isi
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/notifications/read-all:
+    post:
+      summary: Tandai semua sudah dibaca
+      tags:
+      - notifications
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/xnai/status:
+    get:
+      summary: Status konfigurasi XNAI
+      tags:
+      - xnai
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/xnai/chat:
+    post:
+      summary: 'Percakapan XNAI (Enterprise: dengan retrieval knowledge base + sitasi)'
+      tags:
+      - xnai
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  maxLength: 8000
+                history:
+                  type: array
+                  items:
+                    type: object
+                thinkMode:
+                  type: string
+                  maxLength: 20
+                context:
+                  type: string
+                  maxLength: 4000
+                useKnowledge:
+                  type: boolean
+              required:
+              - message
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/xnai/vision:
+    post:
+      summary: 'Analisis gambar: describe, read (OCR), inspect (Enterprise)'
+      tags:
+      - xnai
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                imageBase64:
+                  type: string
+                mode:
+                  type: string
+                  enum:
+                  - describe
+                  - read
+                  - inspect
+                checklist:
+                  type: array
+                  items:
+                    type: string
+                question:
+                  type: string
+                  maxLength: 500
+              required:
+              - imageBase64
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/xnai/translate:
+    post:
+      summary: Terjemahan
+      tags:
+      - xnai
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+                  maxLength: 8000
+                targetLanguage:
+                  type: string
+                  maxLength: 40
+              required:
+              - text
+              - targetLanguage
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/xnai/transcribe:
+    post:
+      summary: Speech-to-text (butuh XNAI_STT_*)
+      tags:
+      - xnai
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                audioBase64:
+                  type: string
+                mime:
+                  type: string
+                  enum:
+                  - audio/wav
+                  - audio/x-wav
+                language:
+                  type: string
+                  maxLength: 8
+              required:
+              - audioBase64
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/xnai/reply-suggestions:
+    post:
+      summary: Saran balasan pesan (disetujui pengguna sebelum dikirim)
+      tags:
+      - xnai
+      security:
+      - bearerAuth: []
+      description: 'Realm token: personal atau enterprise.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                app:
+                  type: string
+                  maxLength: 60
+                sender:
+                  type: string
+                  maxLength: 80
+                message:
+                  type: string
+                  maxLength: 2000
+                tone:
+                  type: string
+                  enum:
+                  - ramah
+                  - formal
+                  - santai
+                  - singkat
+              required:
+              - app
+              - message
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/org:
+    get:
+      summary: Info organisasi dan kebijakan
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      description: 'Realm token: enterprise.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    delete:
+      summary: Hapus organisasi dan seluruh datanya
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - org.manage
+      description: 'Realm token: enterprise. Izin RBAC: org.manage.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirm_slug:
+                  type: string
+                  maxLength: 40
+                password:
+                  type: string
+                  maxLength: 256
+              required:
+              - confirm_slug
+              - password
+      responses:
+        '204':
+          description: Berhasil tanpa isi
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/policy:
+    put:
+      summary: Ubah kebijakan organisasi
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - policy.manage
+      description: 'Realm token: enterprise. Izin RBAC: policy.manage.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ai_enabled:
+                  type: boolean
+                vision_enabled:
+                  type: boolean
+                allow_employee_devices:
+                  type: boolean
+                audit_retention_days:
+                  type: integer
+                notification_retention_days:
+                  type: integer
+                meeting_retention_days:
+                  type: integer
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/divisions:
+    get:
+      summary: Daftar divisi
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - employees.read
+      description: 'Realm token: enterprise. Izin RBAC: employees.read.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    post:
+      summary: Buat divisi
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - divisions.manage
+      description: 'Realm token: enterprise. Izin RBAC: divisions.manage.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 80
+              required:
+              - name
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/divisions/{did}:
+    put:
+      summary: Ganti nama divisi
+      tags:
+      - enterprise
+      parameters:
+      - name: did
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - divisions.manage
+      description: 'Realm token: enterprise. Izin RBAC: divisions.manage.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 80
+              required:
+              - name
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    delete:
+      summary: Hapus divisi yang tidak terpakai
+      tags:
+      - enterprise
+      parameters:
+      - name: did
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - divisions.manage
+      description: 'Realm token: enterprise. Izin RBAC: divisions.manage.'
+      responses:
+        '204':
+          description: Berhasil tanpa isi
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/employees:
+    get:
+      summary: Direktori karyawan
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - employees.read
+      description: 'Realm token: enterprise. Izin RBAC: employees.read.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    post:
+      summary: Undang karyawan (token undangan dikembalikan sekali)
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - employees.manage
+      description: 'Realm token: enterprise. Izin RBAC: employees.manage.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                display_name:
+                  type: string
+                  maxLength: 80
+                role:
+                  type: string
+                  enum:
+                  - owner
+                  - admin
+                  - manager
+                  - member
+                  - auditor
+                division_id:
+                  type: string
+                  maxLength: 64
+                title:
+                  type: string
+                  maxLength: 80
+              required:
+              - email
+              - display_name
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/employees/{eid}:
+    put:
+      summary: Ubah data/peran/status karyawan
+      tags:
+      - enterprise
+      parameters:
+      - name: eid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - employees.manage
+      description: 'Realm token: enterprise. Izin RBAC: employees.manage.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                display_name:
+                  type: string
+                  maxLength: 80
+                title:
+                  type: string
+                  maxLength: 80
+                role:
+                  type: string
+                  enum:
+                  - owner
+                  - admin
+                  - manager
+                  - member
+                  - auditor
+                division_id:
+                  type: string
+                  maxLength: 64
+                status:
+                  type: string
+                  enum:
+                  - active
+                  - disabled
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/employees/{eid}/reinvite:
+    post:
+      summary: Terbitkan ulang undangan
+      tags:
+      - enterprise
+      parameters:
+      - name: eid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - employees.manage
+      description: 'Realm token: enterprise. Izin RBAC: employees.manage.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/security/sessions:
+    get:
+      summary: Sesi aktif seluruh organisasi
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - security.manage
+      description: 'Realm token: enterprise. Izin RBAC: security.manage.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/security/sessions/{sid}:
+    delete:
+      summary: Cabut sesi
+      tags:
+      - enterprise
+      parameters:
+      - name: sid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - security.manage
+      description: 'Realm token: enterprise. Izin RBAC: security.manage.'
+      responses:
+        '204':
+          description: Berhasil tanpa isi
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/security/employees/{eid}/revoke-sessions:
+    post:
+      summary: Cabut semua sesi seorang karyawan
+      tags:
+      - enterprise
+      parameters:
+      - name: eid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - security.manage
+      description: 'Realm token: enterprise. Izin RBAC: security.manage.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/projects:
+    get:
+      summary: Daftar proyek
+      tags:
+      - enterprise
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - projects.read
+      description: 'Realm token: enterprise. Izin RBAC: projects.read.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    post:
+      summary: Buat proyek
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - projects.manage
+      description: 'Realm token: enterprise. Izin RBAC: projects.manage.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 200
+                description:
+                  type: string
+                  maxLength: 4000
+                status:
+                  type: string
+                  enum:
+                  - active
+                  - paused
+                  - done
+                  - archived
+                owner_id:
+                  type: string
+                  maxLength: 64
+                division_id:
+                  type: string
+                  maxLength: 64
+                due_date:
+                  type: string
+                  format: date
+              required:
+              - name
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/projects/{pid}:
+    put:
+      summary: Ubah proyek
+      tags:
+      - enterprise
+      parameters:
+      - name: pid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - projects.manage
+      description: 'Realm token: enterprise. Izin RBAC: projects.manage.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 200
+                description:
+                  type: string
+                  maxLength: 4000
+                status:
+                  type: string
+                  enum:
+                  - active
+                  - paused
+                  - done
+                  - archived
+                owner_id:
+                  type: string
+                  maxLength: 64
+                division_id:
+                  type: string
+                  maxLength: 64
+                due_date:
+                  type: string
+                  format: date
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    delete:
+      summary: Hapus proyek
+      tags:
+      - enterprise
+      parameters:
+      - name: pid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - projects.manage
+      description: 'Realm token: enterprise. Izin RBAC: projects.manage.'
+      responses:
+        '204':
+          description: Berhasil tanpa isi
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/tasks:
+    get:
+      summary: Daftar tugas (terfilter sesuai peran/divisi)
+      tags:
+      - enterprise
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: project
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: assignee
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: priority
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: mine
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: overdue
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - tasks.read
+      description: 'Realm token: enterprise. Izin RBAC: tasks.read.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    post:
+      summary: Buat tugas (menugaskan orang lain butuh tasks.assign)
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - tasks.create
+      description: 'Realm token: enterprise. Izin RBAC: tasks.create.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  maxLength: 200
+                description:
+                  type: string
+                  maxLength: 8000
+                project_id:
+                  type: string
+                  maxLength: 64
+                assignee_id:
+                  type: string
+                  maxLength: 64
+                priority:
+                  type: string
+                  enum:
+                  - low
+                  - normal
+                  - high
+                  - urgent
+                due_date:
+                  type: string
+                  format: date
+              required:
+              - title
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/tasks/{tid}:
+    get:
+      summary: Detail tugas
+      tags:
+      - enterprise
+      parameters:
+      - name: tid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - tasks.read
+      description: 'Realm token: enterprise. Izin RBAC: tasks.read.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    put:
+      summary: Ubah tugas (pembuat atau manajer)
+      tags:
+      - enterprise
+      parameters:
+      - name: tid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - tasks.read
+      description: 'Realm token: enterprise. Izin RBAC: tasks.read.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  maxLength: 200
+                description:
+                  type: string
+                  maxLength: 8000
+                project_id:
+                  type: string
+                  maxLength: 64
+                assignee_id:
+                  type: string
+                  maxLength: 64
+                priority:
+                  type: string
+                  enum:
+                  - low
+                  - normal
+                  - high
+                  - urgent
+                due_date:
+                  type: string
+                  format: date
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    delete:
+      summary: Hapus tugas (pembuat atau manajer)
+      tags:
+      - enterprise
+      parameters:
+      - name: tid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - tasks.read
+      description: 'Realm token: enterprise. Izin RBAC: tasks.read.'
+      responses:
+        '204':
+          description: Berhasil tanpa isi
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/tasks/{tid}/status:
+    post:
+      summary: Ubah status tugas
+      tags:
+      - enterprise
+      parameters:
+      - name: tid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - tasks.read
+      description: 'Realm token: enterprise. Izin RBAC: tasks.read.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                  - todo
+                  - doing
+                  - blocked
+                  - done
+              required:
+              - status
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/tasks/{tid}/comments:
+    get:
+      summary: Komentar tugas
+      tags:
+      - enterprise
+      parameters:
+      - name: tid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - tasks.read
+      description: 'Realm token: enterprise. Izin RBAC: tasks.read.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    post:
+      summary: Tambah komentar
+      tags:
+      - enterprise
+      parameters:
+      - name: tid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - tasks.read
+      description: 'Realm token: enterprise. Izin RBAC: tasks.read.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                body:
+                  type: string
+                  maxLength: 4000
+              required:
+              - body
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/announcements:
+    get:
+      summary: Pengumuman internal
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - announcements.read
+      description: 'Realm token: enterprise. Izin RBAC: announcements.read.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    post:
+      summary: Buat pengumuman (notifikasi ke target)
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - announcements.manage
+      description: 'Realm token: enterprise. Izin RBAC: announcements.manage.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  maxLength: 200
+                body:
+                  type: string
+                  maxLength: 8000
+                division_id:
+                  type: string
+                  maxLength: 64
+                pinned:
+                  type: boolean
+                expires_in_days:
+                  type: integer
+              required:
+              - title
+              - body
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/announcements/{aid}:
+    delete:
+      summary: Hapus pengumuman
+      tags:
+      - enterprise
+      parameters:
+      - name: aid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - announcements.manage
+      description: 'Realm token: enterprise. Izin RBAC: announcements.manage.'
+      responses:
+        '204':
+          description: Berhasil tanpa isi
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/kb/documents:
+    get:
+      summary: Dokumen knowledge base yang boleh diakses
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - kb.read
+      description: 'Realm token: enterprise. Izin RBAC: kb.read.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    post:
+      summary: Tambah dokumen teks/markdown
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - kb.manage
+      description: 'Realm token: enterprise. Izin RBAC: kb.manage.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  maxLength: 200
+                text:
+                  type: string
+                  maxLength: 400000
+                visibility:
+                  type: string
+                  enum:
+                  - org
+                  - division
+                  - managers
+                  - admins
+                division_id:
+                  type: string
+                  maxLength: 64
+                source:
+                  type: string
+                  maxLength: 200
+              required:
+              - title
+              - text
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/kb/documents/from-image:
+    post:
+      summary: Tambah dokumen dari foto (OCR via XNAI vision)
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - kb.manage
+      - ai.use
+      description: 'Realm token: enterprise. Izin RBAC: kb.manage, ai.use.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  maxLength: 200
+                imageBase64:
+                  type: string
+                visibility:
+                  type: string
+                  enum:
+                  - org
+                  - division
+                  - managers
+                  - admins
+                division_id:
+                  type: string
+                  maxLength: 64
+              required:
+              - title
+              - imageBase64
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/kb/documents/{doc_id}:
+    delete:
+      summary: Hapus dokumen
+      tags:
+      - enterprise
+      parameters:
+      - name: doc_id
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - kb.manage
+      description: 'Realm token: enterprise. Izin RBAC: kb.manage.'
+      responses:
+        '204':
+          description: Berhasil tanpa isi
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/kb/search:
+    get:
+      summary: Cari di knowledge base (BM25 atas indeks buta)
+      tags:
+      - enterprise
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: k
+        in: query
+        required: false
+        schema:
+          type: integer
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - kb.read
+      description: 'Realm token: enterprise. Izin RBAC: kb.read.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/kb/ask:
+    post:
+      summary: Tanya knowledge base; jawaban dengan sitasi
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - ai.use
+      description: 'Realm token: enterprise. Izin RBAC: ai.use.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                question:
+                  type: string
+                  maxLength: 2000
+              required:
+              - question
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/meetings:
+    get:
+      summary: Daftar rapat yang terlihat
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - meetings.manage
+      description: 'Realm token: enterprise. Izin RBAC: meetings.manage.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    post:
+      summary: Simpan catatan rapat (+ ringkasan XNAI bila tersedia)
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - meetings.manage
+      description: 'Realm token: enterprise. Izin RBAC: meetings.manage.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  maxLength: 200
+                notes:
+                  type: string
+                  maxLength: 60000
+                held_at:
+                  type: integer
+                summarize:
+                  type: boolean
+              required:
+              - title
+              - notes
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/meetings/{mid}:
+    get:
+      summary: Detail rapat
+      tags:
+      - enterprise
+      parameters:
+      - name: mid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - meetings.manage
+      description: 'Realm token: enterprise. Izin RBAC: meetings.manage.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    delete:
+      summary: Hapus rapat
+      tags:
+      - enterprise
+      parameters:
+      - name: mid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - meetings.manage
+      description: 'Realm token: enterprise. Izin RBAC: meetings.manage.'
+      responses:
+        '204':
+          description: Berhasil tanpa isi
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/meetings/{mid}/summarize:
+    post:
+      summary: Ringkas ulang
+      tags:
+      - enterprise
+      parameters:
+      - name: mid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - meetings.manage
+      description: 'Realm token: enterprise. Izin RBAC: meetings.manage.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/meetings/{mid}/create-tasks:
+    post:
+      summary: Ubah action item menjadi tugas
+      tags:
+      - enterprise
+      parameters:
+      - name: mid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - tasks.assign
+      description: 'Realm token: enterprise. Izin RBAC: tasks.assign.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                indices:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/analytics/overview:
+    get:
+      summary: 'Analitik agregat (manajer: hanya divisinya)'
+      tags:
+      - enterprise
+      parameters:
+      - name: days
+        in: query
+        required: false
+        schema:
+          type: integer
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - analytics.read
+      description: 'Realm token: enterprise. Izin RBAC: analytics.read.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/analytics/me:
+    get:
+      summary: Ringkasan tugas milik sendiri
+      tags:
+      - enterprise
+      parameters:
+      - name: days
+        in: query
+        required: false
+        schema:
+          type: integer
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - tasks.read
+      description: 'Realm token: enterprise. Izin RBAC: tasks.read.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/transparency:
+    get:
+      summary: Pernyataan data apa yang dikumpulkan dan tidak dikumpulkan
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      description: 'Realm token: enterprise.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/reports:
+    get:
+      summary: Daftar laporan
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - reports.create
+      description: 'Realm token: enterprise. Izin RBAC: reports.create.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+    post:
+      summary: Buat laporan operasional (+ narasi XNAI opsional)
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - reports.create
+      description: 'Realm token: enterprise. Izin RBAC: reports.create.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                  - weekly
+                  - project
+                  - custom
+                project_id:
+                  type: string
+                  maxLength: 64
+                period_days:
+                  type: integer
+                narrative:
+                  type: boolean
+              required:
+              - kind
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/reports/{rid}:
+    get:
+      summary: Detail laporan
+      tags:
+      - enterprise
+      parameters:
+      - name: rid
+        in: path
+        required: true
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - reports.create
+      description: 'Realm token: enterprise. Izin RBAC: reports.create.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/audit:
+    get:
+      summary: Catatan audit (terbaru dulu)
+      tags:
+      - enterprise
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: before
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: action
+        in: query
+        required: false
+        schema:
+          type: string
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - audit.read
+      description: 'Realm token: enterprise. Izin RBAC: audit.read.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/E400'
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/audit/verify:
+    get:
+      summary: Verifikasi rantai hash audit
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - audit.read
+      description: 'Realm token: enterprise. Izin RBAC: audit.read.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
+  /v1/enterprise/audit/export:
+    get:
+      summary: Ekspor audit sebagai NDJSON
+      tags:
+      - enterprise
+      security:
+      - bearerAuth: []
+      x-required-permissions:
+      - audit.read
+      description: 'Realm token: enterprise. Izin RBAC: audit.read.'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/x-ndjson:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/E401'
+        '403':
+          $ref: '#/components/responses/E403'
+        '404':
+          $ref: '#/components/responses/E404'
+        '409':
+          $ref: '#/components/responses/E409'
+        '429':
+          $ref: '#/components/responses/E429'
+        '503':
+          $ref: '#/components/responses/E503'
